@@ -106,6 +106,12 @@ in
 
     security.sudo.wheelNeedsPassword = false;
 
+    environment.interactiveShellInit = ''
+      if [ -d /workspace ]; then
+        cd /workspace
+      fi
+    '';
+
     environment.systemPackages = cfg.packages;
 
     # Required for nix/devbox to work inside the VM

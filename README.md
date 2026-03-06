@@ -14,24 +14,6 @@ The VM will start with your current directory shared at `/workspace`. VM state i
 
 ## Options
 
-Configure the VM by editing the inline module in `flake.nix`:
-
-```nix
-nixosConfigurations.devvm = nixpkgs.lib.nixosSystem {
-  inherit system;
-  modules = [
-    microvm.nixosModules.microvm
-    ./vm.nix
-    {
-      devvm.hostname = "myvm";
-      devvm.username = "myuser";
-      devvm.cpus = 8;
-      devvm.memorySize = 8192;
-    }
-  ];
-};
-```
-
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `devvm.hostname` | string | `"devvm"` | VM hostname |
@@ -41,19 +23,39 @@ nixosConfigurations.devvm = nixpkgs.lib.nixosSystem {
 | `devvm.storeOverlaySize` | int | `8192` | Writable nix store overlay disk size in megabytes |
 | `devvm.packages` | list of packages | curl, wget, htop, jq, file, unzip, zip, devbox, claude-code | Packages installed in the VM |
 
-## Extra configuration
+## Customization
 
-Any NixOS options can be set directly in the inline module in `flake.nix` alongside the `devvm.*` options:
+### Using as a library
+
+The flake exports a `mkDevvm` helper that builds a customized VM package. Add `nix-devvm` as a flake input and call `mkDevvm` with extra NixOS modules:
 
 ```nix
 {
-  devvm.cpus = 8;
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nix-devvm.url = "github:soarinferret/nix-devvm";
+  };
 
-  programs.fish.enable = true;
-  programs.git.enable = true;
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
+  outputs = { nixpkgs, nix-devvm, ... }: let
+    system = "x86_64-linux";
+  in {
+    packages.${system}.default = nix-devvm.lib.${system}.mkDevvm {
+      extraModules = [
+        {
+          devvm.cpus = 8;
+          devvm.memorySize = 8192;
+          devvm.packages = with nixpkgs.legacyPackages.${system}; [
+            curl
+            git
+            nodejs
+          ];
+
+          # Any NixOS options work here too
+          programs.fish.enable = true;
+          programs.git.enable = true;
+        }
+      ];
+    };
   };
 }
 ```
