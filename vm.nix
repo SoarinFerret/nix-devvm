@@ -52,74 +52,66 @@ in
       description = "Packages to install in the VM.";
     };
 
-    extraConfig = lib.mkOption {
-      type = lib.types.attrs;
-      default = {};
-      description = "Extra NixOS configuration to merge into the VM.";
-    };
   };
 
-  config = lib.mkMerge [
-    {
-      microvm = {
-        hypervisor = "qemu";
-        mem = cfg.memorySize;
-        vcpu = cfg.cpus;
+  config = {
+    microvm = {
+      hypervisor = "qemu";
+      mem = cfg.memorySize;
+      vcpu = cfg.cpus;
 
-        interfaces = [{
-          type = "user";
-          id = "eth0";
-          mac = "02:00:00:00:00:01";
-        }];
+      interfaces = [{
+        type = "user";
+        id = "eth0";
+        mac = "02:00:00:00:00:01";
+      }];
 
-        shares = [
-          {
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-            proto = "9p";
-          }
-          {
-            tag = "workspace";
-            source = "/tmp/devvm-workspace";
-            mountPoint = "/workspace";
-            proto = "virtiofs";
-          }
-        ];
+      shares = [
+        {
+          tag = "ro-store";
+          source = "/nix/store";
+          mountPoint = "/nix/.ro-store";
+          proto = "9p";
+        }
+        {
+          tag = "workspace";
+          source = "/tmp/devvm-workspace";
+          mountPoint = "/workspace";
+          proto = "virtiofs";
+        }
+      ];
 
-        writableStoreOverlay = "/nix/.rw-store";
+      writableStoreOverlay = "/nix/.rw-store";
 
-        virtiofsd.group = null;
+      virtiofsd.group = null;
 
-        volumes = [{
-          image = "nix-store-overlay.img";
-          mountPoint = config.microvm.writableStoreOverlay;
-          size = cfg.storeOverlaySize;
-        }];
-      };
+      volumes = [{
+        image = "nix-store-overlay.img";
+        mountPoint = config.microvm.writableStoreOverlay;
+        size = cfg.storeOverlaySize;
+      }];
+    };
 
-      networking.hostName = cfg.hostname;
+    networking.hostName = cfg.hostname;
 
-      # Auto-login on serial console
-      services.getty.autologinUser = cfg.username;
+    # Auto-login on serial console
+    services.getty.autologinUser = cfg.username;
 
-      users.users.${cfg.username} = {
-        uid = 1000;
-        isNormalUser = true;
-        extraGroups = [ "wheel" ];
-        initialPassword = cfg.username;
-      };
+    users.users.${cfg.username} = {
+      uid = 1000;
+      isNormalUser = true;
+      extraGroups = [ "wheel" ];
+      initialPassword = cfg.username;
+    };
 
-      security.sudo.wheelNeedsPassword = false;
+    security.sudo.wheelNeedsPassword = false;
 
-      environment.systemPackages = cfg.packages;
+    environment.systemPackages = cfg.packages;
 
-      # Required for nix/devbox to work inside the VM
-      nix.settings.experimental-features = [ "nix-command" "flakes" ];
-      nixpkgs.config.allowUnfree = true;
+    # Required for nix/devbox to work inside the VM
+    nix.settings.experimental-features = [ "nix-command" "flakes" ];
+    nixpkgs.config.allowUnfree = true;
 
-      system.stateVersion = "25.11";
-    }
-    cfg.extraConfig
-  ];
+    system.stateVersion = "25.11";
+  };
 }

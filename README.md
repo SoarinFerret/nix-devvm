@@ -7,7 +7,7 @@ A lightweight NixOS development VM using [microvm.nix](https://github.com/microv
 Run the VM from any project directory:
 
 ```sh
-nix run github:cernesti/nix-devvm
+nix run github:soarinferret/nix-devvm
 ```
 
 The VM will start with your current directory shared at `/workspace`. VM state is stored per-project in `~/.local/share/devvm/`.
@@ -40,21 +40,20 @@ nixosConfigurations.devvm = nixpkgs.lib.nixosSystem {
 | `devvm.memorySize` | int | `4096` | Memory in megabytes |
 | `devvm.storeOverlaySize` | int | `8192` | Writable nix store overlay disk size in megabytes |
 | `devvm.packages` | list of packages | curl, wget, htop, jq, file, unzip, zip, devbox, claude-code | Packages installed in the VM |
-| `devvm.extraConfig` | attrs | `{}` | Extra NixOS configuration merged into the VM |
 
 ## Extra configuration
 
-Use `devvm.extraConfig` to set any NixOS options without modifying `vm.nix`:
+Any NixOS options can be set directly in the inline module in `flake.nix` alongside the `devvm.*` options:
 
 ```nix
 {
-  devvm.extraConfig = {
-    programs.fish.enable = true;
-    programs.git.enable = true;
-    programs.neovim = {
-      enable = true;
-      defaultEditor = true;
-    };
+  devvm.cpus = 8;
+
+  programs.fish.enable = true;
+  programs.git.enable = true;
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
   };
 }
 ```

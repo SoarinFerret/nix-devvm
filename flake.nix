@@ -55,10 +55,9 @@
           # devvm.memorySize = 8192;
           # devvm.storeOverlaySize = 16384;
           # devvm.packages = [ pkgs.curl pkgs.git ];
-          # devvm.extraConfig = {
-          #   programs.fish.enable = true;
-          #   programs.git.enable = true;
-          # };
+          # Any NixOS options can be set directly here, e.g.:
+          # programs.fish.enable = true;
+          # programs.git.enable = true;
         }
       ];
     };
