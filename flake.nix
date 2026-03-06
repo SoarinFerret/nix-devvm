@@ -25,6 +25,8 @@
     mkDevvmPackage = extraModules: let
       vm = mkDevvmSystem extraModules;
       runner = vm.config.microvm.declaredRunner;
+      hostname = vm.config.networking.hostName;
+      socketName = "${hostname}-virtiofs-workspace.sock";
     in pkgs.writeShellScriptBin "devvm" ''
       PROJECT_DIR="$(pwd)"
       STATE_DIR="$HOME/.local/share/devvm/$(echo -n "$PROJECT_DIR" | md5sum | cut -d' ' -f1)"
@@ -33,7 +35,7 @@
 
       # Start virtiofsd directly (bypassing supervisord which changes cwd to /)
       ${pkgs.virtiofsd}/bin/virtiofsd \
-        --socket-path=devvm-virtiofs-workspace.sock \
+        --socket-path=${socketName} \
         --shared-dir="$PROJECT_DIR" \
         --thread-pool-size "$(nproc)" \
         --posix-acl --xattr &
@@ -42,7 +44,7 @@
       trap cleanup EXIT
 
       # Wait for virtiofsd socket to be ready
-      while [ ! -S devvm-virtiofs-workspace.sock ]; do sleep 0.1; done
+      while [ ! -S ${socketName} ]; do sleep 0.1; done
 
       ${runner}/bin/microvm-run
     '';
