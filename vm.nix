@@ -59,13 +59,11 @@ in
 
     # Overlayfs combining read-only store with writable overlay
     fileSystems."/nix/store" = {
-      device = "overlay";
-      fsType = "overlay";
-      options = [
-        "lowerdir=/nix/.ro-store"
-        "upperdir=/nix/.rw-store/store"
-        "workdir=/nix/.rw-store/work"
-      ];
+      overlay = {
+        lowerdir = [ "/nix/.ro-store" ];
+        upperdir = "/nix/.rw-store/store";
+        workdir = "/nix/.rw-store/work";
+      };
       depends = [ "/nix/.ro-store" "/nix/.rw-store" ];
       neededForBoot = true;
     };
@@ -84,16 +82,29 @@ in
       "ext4"
     ];
 
-    # Create overlay directories on the ext4 disk before mounting overlayfs
-    boot.initrd.postDeviceCommands = ''
-      mkdir -p /nix/.rw-store/store
-      mkdir -p /nix/.rw-store/work
-    '';
+    # Systemd initrd for faster boot
+    boot.initrd.systemd.enable = true;
+    boot.initrd.systemd.tpm2.enable = false;
 
-    # No bootloader needed — cloud-hypervisor boots kernel directly
+    # No bootloader needed — QEMU boots kernel directly
     boot.loader.grub.enable = false;
 
+    # Reduce serial ports probe time
+    boot.kernelParams = [ "8250.nr_uarts=1" ];
+    boot.swraid.enable = false;
+    boot.blacklistedKernelModules = [ "rfkill" "intel_pstate" ];
+
+    # Disable docs — saves closure size and boot time
+    documentation.enable = false;
+
+    # systemd-networkd is faster than scripted networking
     networking.hostName = cfg.hostname;
+    networking.useNetworkd = true;
+    systemd.network.wait-online.enable = false;
+    systemd.tpm2.enable = false;
+
+    # No need for nixos-rebuild in ephemeral VM
+    system.switch.enable = false;
 
     # Auto-login on serial console
     services.getty.autologinUser = cfg.username;
