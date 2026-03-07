@@ -17,24 +17,6 @@ in
       description = "Username for the default user account.";
     };
 
-    cpus = lib.mkOption {
-      type = lib.types.int;
-      default = 4;
-      description = "Number of virtual CPUs for the VM.";
-    };
-
-    memorySize = lib.mkOption {
-      type = lib.types.int;
-      default = 4096;
-      description = "Memory size in megabytes for the VM.";
-    };
-
-    storeOverlaySize = lib.mkOption {
-      type = lib.types.int;
-      default = 8192;
-      description = "Size in megabytes of the writable nix store overlay disk image.";
-    };
-
     packages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = with pkgs; [
@@ -51,46 +33,65 @@ in
       defaultText = lib.literalExpression "[ curl wget htop jq file unzip zip devbox claude-code ]";
       description = "Packages to install in the VM.";
     };
-
   };
 
   config = {
-    microvm = {
-      hypervisor = "qemu";
-      mem = cfg.memorySize;
-      vcpu = cfg.cpus;
-
-      interfaces = [{
-        type = "user";
-        id = "eth0";
-        mac = "02:00:00:00:00:01";
-      }];
-
-      shares = [
-        {
-          tag = "ro-store";
-          source = "/nix/store";
-          mountPoint = "/nix/.ro-store";
-          proto = "9p";
-        }
-        {
-          tag = "workspace";
-          source = "/tmp/devvm-workspace";
-          mountPoint = "/workspace";
-          proto = "virtiofs";
-        }
-      ];
-
-      writableStoreOverlay = "/nix/.rw-store";
-
-      virtiofsd.group = null;
-
-      volumes = [{
-        image = "nix-store-overlay.img";
-        mountPoint = config.microvm.writableStoreOverlay;
-        size = cfg.storeOverlaySize;
-      }];
+    # Tmpfs root filesystem (ephemeral)
+    fileSystems."/" = {
+      device = "tmpfs";
+      fsType = "tmpfs";
+      options = [ "mode=0755" "size=50%" ];
     };
+
+    # Virtiofs: read-only nix store from host
+    fileSystems."/nix/.ro-store" = {
+      device = "nix-store";
+      fsType = "virtiofs";
+      neededForBoot = true;
+    };
+
+    # Ext4 overlay disk for writable nix store
+    fileSystems."/nix/.rw-store" = {
+      device = "/dev/vda";
+      fsType = "ext4";
+      neededForBoot = true;
+    };
+
+    # Overlayfs combining read-only store with writable overlay
+    fileSystems."/nix/store" = {
+      device = "overlay";
+      fsType = "overlay";
+      options = [
+        "lowerdir=/nix/.ro-store"
+        "upperdir=/nix/.rw-store/store"
+        "workdir=/nix/.rw-store/work"
+      ];
+      depends = [ "/nix/.ro-store" "/nix/.rw-store" ];
+      neededForBoot = true;
+    };
+
+    # Virtiofs: workspace share from host
+    fileSystems."/workspace" = {
+      device = "workspace";
+      fsType = "virtiofs";
+    };
+
+    boot.initrd.availableKernelModules = [
+      "virtiofs"
+      "virtio_pci"
+      "virtio_blk"
+      "overlay"
+      "ext4"
+    ];
+
+    # Create overlay directories on the ext4 disk before mounting overlayfs
+    boot.initrd.postDeviceCommands = ''
+      mkdir -p /nix/.rw-store/store
+      mkdir -p /nix/.rw-store/work
+    '';
+
+    # No bootloader needed — cloud-hypervisor boots kernel directly
+    boot.loader.grub.enable = false;
 
     networking.hostName = cfg.hostname;
 
