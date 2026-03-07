@@ -2,6 +2,11 @@
 
 let
   cfg = config.devvm;
+
+  # Closure info for registering store paths in the nix DB
+  regInfo = pkgs.closureInfo {
+    rootPaths = [ config.system.build.toplevel ];
+  };
 in
 {
   options.devvm = {
@@ -129,6 +134,15 @@ in
     # Required for nix/devbox to work inside the VM
     nix.settings.experimental-features = [ "nix-command" "flakes" ];
     nixpkgs.config.allowUnfree = true;
+
+    # Register the system closure's store paths in the nix DB at boot.
+    # Without this, nix doesn't know about paths on the read-only store layer
+    # and hangs trying to re-download/copy them.
+    boot.postBootCommands = ''
+      if [[ "$(cat /proc/cmdline)" =~ regInfo=([^ ]*) ]]; then
+        ${config.nix.package.out}/bin/nix-store --load-db < "''${BASH_REMATCH[1]}"
+      fi
+    '';
 
     system.stateVersion = "25.11";
   };

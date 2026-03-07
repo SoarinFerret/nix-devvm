@@ -23,6 +23,7 @@
       kernel = "${vm.config.system.build.kernel.out}/${pkgs.stdenv.hostPlatform.linux-kernel.target}";
       initrd = "${vm.config.system.build.initialRamdisk}/initrd";
       toplevel = vm.config.system.build.toplevel;
+      regInfo = pkgs.closureInfo { rootPaths = [ toplevel ]; };
       kernelParams = builtins.concatStringsSep " " vm.config.boot.kernelParams;
       mem = "8192";
 
@@ -169,7 +170,7 @@
         -enable-kvm \
         -kernel ${kernel} \
         -initrd ${initrd} \
-        -append "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 init=${toplevel}/init ${kernelParams}" \
+        -append "earlyprintk=ttyS0 console=ttyS0 reboot=t panic=-1 init=${toplevel}/init regInfo=${regInfo}/registration ${kernelParams}" \
         -drive "id=overlay,format=raw,file=$OVERLAY_DISK,if=none,aio=io_uring,discard=unmap" \
         -device "virtio-blk-pci,drive=overlay" \
         -numa "node,memdev=mem" \
