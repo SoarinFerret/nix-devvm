@@ -157,10 +157,10 @@
         done
       done
 
-      # Launch QEMU
+      # Launch QEMU with microvm machine type (minimal virtual hardware)
       exec ${qemu} \
         -name devvm \
-        -M q35,accel=kvm:tcg,mem-merge=on \
+        -M microvm,accel=kvm:tcg,mem-merge=on,pit=off,pic=off,rtc=on,pcie=on,usb=off,acpi=on \
         -m "$RAM" \
         -smp "$CPUS" \
         -cpu host,+x2apic,-sgx \
@@ -176,7 +176,7 @@
         -object "memory-backend-memfd,id=mem,size=$RAM,share=on" \
         "''${FS_ARGS[@]}" \
         -netdev "user,id=net0" \
-        -device "virtio-net-pci,netdev=net0,mac=02:00:00:00:00:01,romfile=" \
+        -device "virtio-net-pci,netdev=net0,mac=02:00:00:00:00:01" \
         -device "virtio-rng-pci" \
         -device "i8042" \
         -chardev "stdio,id=stdio,signal=off" \

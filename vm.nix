@@ -92,7 +92,7 @@ in
     # Reduce serial ports probe time
     boot.kernelParams = [ "8250.nr_uarts=1" ];
     boot.swraid.enable = false;
-    boot.blacklistedKernelModules = [ "rfkill" "intel_pstate" ];
+    boot.blacklistedKernelModules = [ "rfkill" "intel_pstate" "drm" ];
 
     # Disable docs — saves closure size and boot time
     documentation.enable = false;
